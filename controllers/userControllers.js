@@ -2,7 +2,7 @@ const { model } = require("mongoose");
 const userModel = require("../models/user");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const SECRET_KEY = "abc";
+const SECRET_KEY = "NOTEAPI";
 
 const signup = async (req, res) => {
   //existing user
@@ -10,7 +10,7 @@ const signup = async (req, res) => {
   //user created
   //token generated
 
-    const { email, password } = req.body;
+    const { name, email, password } = req.body;
 
 try {
     const existingUser = await userModel.findOne({ email: email });
@@ -22,6 +22,7 @@ try {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const result = await userModel.create({
+        name: name,
         email: email,
         password: hashedPassword,
     });
