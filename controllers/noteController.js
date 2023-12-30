@@ -81,7 +81,7 @@ const likeNote = async (req, res) => {
     const id = req.params.id;
 
     const result = await noteModel
-      .findByIdAndUpdate(id, { $addtoSet: { likes: req.userId } }, { new: true })
+      .findByIdAndUpdate(id, { $addToSet: { likes: req.userId } }, { new: true })
 
     res.status(200).json(result);
   } catch (err) {
