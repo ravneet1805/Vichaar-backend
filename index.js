@@ -32,7 +32,7 @@ app.get("/", (req,res)=>{
 
 
 
-mongoose.connect("mongodb+srv://ravneetsingh:tdFsLYGdSzAvlCQW@cluster0.71gvnk2.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
+mongoose.connect("mongodb+srv://ravneetsingh:QKM3et7gJV7tHLyx@cluster0.71gvnk2.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
 .then(()=>{
     console.log("connected to DB");
 })
