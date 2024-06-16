@@ -30,7 +30,9 @@ app.get("/", (req,res)=>{
     res.status(200).send("hello ravneet")
 })
 
-mongoose.connect("mongodb+srv://ravneetsingh:tdFsLYGdSzAvlCQW@cluster0.71gvnk2.mongodb.net/?retryWrites=true&w=majority")
+
+
+mongoose.connect("mongodb+srv://ravneetsingh:tdFsLYGdSzAvlCQW@cluster0.71gvnk2.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
 .then(()=>{
     console.log("connected to DB");
 })
