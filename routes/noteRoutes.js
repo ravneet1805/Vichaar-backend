@@ -7,6 +7,7 @@ const { getNote,
     likeNote,
     unlikeNote,
     getspecificUserNote,
+    getFollowingUserNotes,
     getComments,
     addComment,
     updateComment,
@@ -16,6 +17,7 @@ const auth = require('../middleware/auth')
 const noteRouter = express.Router();
 
 noteRouter.get("/", auth, getNote)
+noteRouter.get("/followingnotes", auth, getFollowingUserNotes)
 
 noteRouter.get("/user", auth, getUserNote)
 

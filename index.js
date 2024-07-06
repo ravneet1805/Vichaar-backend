@@ -1,5 +1,6 @@
 const express = require("express");
 const socketIO = require("socket.io");
+const http = require("http");
 const userRouter = require("./routes/userRoutes");
 const noteRouter = require("./routes/noteRoutes");
 const app = express();
@@ -40,23 +41,17 @@ mongoose.connect("mongodb+srv://ravneetsingh:QKM3et7gJV7tHLyx@cluster0.71gvnk2.m
     console.log(error)
 })
 
-const server = app.listen(4000, ()=>{
+//Socket Logic
+const socketio = require('socket.io')(http)
+
+socketio.on("connection", (userSocket) => {
+    userSocket.on("send_message", (data) => {
+        userSocket.broadcast.emit("receive_message", data)
+    })
+})
+
+const server = app.listen(8000, ()=>{
     console.log("server started")
 })
 
-// const io = socketIO(server);
 
-// // Socket.IO connection handling
-// io.on("connection", (socket) => {
-//     console.log("A user connected");
-
-//     // Handle socket events, e.g., chat messages
-//     socket.on("chat message", (msg) => {
-//         console.log(`Message: ${msg}`);
-//         io.emit("chat message", msg); // Broadcast the message to all connected clients
-//     });
-
-//     socket.on("disconnect", () => {
-//         console.log("User disconnected");
-//     });
-// });

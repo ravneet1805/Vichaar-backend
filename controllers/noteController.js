@@ -1,4 +1,5 @@
 const noteModel = require("../models/note");
+const userModel = require("../models/user");
 
 const createNote = async (req, res) => {
   const { title } = req.body;
@@ -63,6 +64,29 @@ const getNote = async (req, res) => {
     res.status(500).json({ message: "something went wrong" });
   }
 };
+const getFollowingUserNotes = async (req, res) => {
+  try {
+    // Get the list of users that the current user is following
+    const user = await userModel.findById(req.userId).populate("following", "_id");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Get the list of following user IDs
+    const followingUserIds = user.following.map(followingUser => followingUser._id);
+
+    // Retrieve the notes from the users that the current user is following
+    const notes = await noteModel
+      .find({ userId: { $in: followingUserIds } })
+      .sort({ createdAt: -1 })
+      .populate("userId");
+
+    res.status(200).json(notes);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Something went wrong" });
+  }
+};
 const getUserNote = async (req, res) => {
   try {
     const notes = await noteModel
@@ -120,7 +144,7 @@ const unlikeNote = async (req, res) => {
     const noteId = req.params.id;
 
     try {
-      const note = await noteModel.findById(noteId).populate('comments.user', 'name');
+      const note = await noteModel.findById(noteId).populate('comments.user', 'name image' );
       if (!note) {
         return res.status(404).json({ error: 'Note not found' });
       }
@@ -195,6 +219,7 @@ module.exports = {
   likeNote,
   unlikeNote,
   getNote,
+  getFollowingUserNotes,
   getspecificUserNote,
   getComments,
   addComment,
