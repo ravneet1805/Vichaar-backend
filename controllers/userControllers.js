@@ -12,6 +12,8 @@ cloudinary.config({
     api_secret: '_9NMHEm1wf80p37Qdc3FSE3UBok'
 });
 
+
+
 const signup = async (req, res) =>  {
     const file = req.files.photo;
     cloudinary.uploader.upload(file.tempFilePath, async (err,photoData) =>{

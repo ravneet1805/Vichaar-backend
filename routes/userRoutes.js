@@ -1,5 +1,5 @@
 const express = require("express");
-const { signup, signin, searchUsers, getUser, followUser, unfollowUser } = require("../controllers/userControllers");
+const { signup, signin, searchUsers, getUser, followUser, unfollowUser, linkedinAuth,linkedinCallback,profile } = require("../controllers/userControllers");
 
 const auth = require('../middleware/auth')
 const userRouter = express.Router();
