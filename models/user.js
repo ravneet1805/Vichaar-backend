@@ -7,14 +7,20 @@ const userSchema = mongoose.Schema({
         required : true
     },
 
+    linkedinId : {
+        type : String,
+        //required : true
+    },
+
     email : {
         type : String,
-        required : true
+        required : true,
+        unique: true
     },
 
     password : {
         type : String,
-        required : true
+        //required : true
     },
 
     image : {

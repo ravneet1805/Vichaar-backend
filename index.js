@@ -6,41 +6,69 @@ const noteRouter = require("./routes/noteRoutes");
 const passport = require('passport');
 const LinkedInStrategy = require('passport-linkedin-oauth2').Strategy;
 const session = require('express-session');
+const cors = require('cors'); // Add this line
 const app = express();
 const mongoose = require("mongoose");
 const fileUpload = require('express-fileupload')
+const userModel = require("./models/user");
+const jwt = require("jsonwebtoken");
 
 app.use(express.json())
 
+// Add CORS middleware
+app.use(cors());
 
-// Initialize express-session middleware
 app.use(session({
     secret: 'sessionvichaar061', // Change this to a secure random string
     resave: false,
     saveUninitialized: false
 }));
 
-// Initialize Passport middleware
 app.use(passport.initialize());
 app.use(passport.session());
 
-
-// Configure the LinkedIn strategy
 passport.use(new LinkedInStrategy({
     clientID: '86zgpoa1vowd7t',
     clientSecret: 'HfYEIA93IIDFLpuh',
-    callbackURL: "https://vichaar.onrender.com/auth/linkedin/callback",
+    callbackURL: "http://localhost:8000/auth/linkedin/callback",
     scope: ['openid', 'profile', 'email'],
-}, function(accessToken, refreshToken, profile, done) {
-    // Handle errors explicitly
-    if (profile.error) {
-        return done(new Error(profile.error.message));
+    profileFields: ['id', 'first-name', 'last-name', 'email-address', 'headline']
+}, async(accessToken, refreshToken, openid, profile, done) => {
+    try {
+        console.log("LinkedIn Profile Data:", profile);
+        console.log(accessToken)
+
+        const linkedinId = profile.id;
+        const name = profile.displayName;
+        const email = profile.email; // Assuming you have a way to get email from the profile
+        const image = profile.picture; // Assuming the picture is available in the profile object
+
+        let user = await userModel.findOne({ email: email });
+
+        if (user) {
+            user.linkedinId = profile.id;
+            user.name = profile.displayName;
+            user.email = profile.email;
+            user.image = profile.picture;
+            await user.save();
+            const token = jwt.sign({ email: user.email, id: user._id }, 'NOTEAPI');
+            return done(null, { user, token });
+        } else {
+            user = await userModel.create({
+                linkedinId: linkedinId,
+                name: name,
+                email: email,
+                image: image
+            });
+
+            const token = jwt.sign({ email: user.email, id: user._id }, 'NOTEAPI');
+            return done(null, { user, token });
+        }
+    } catch (error) {
+        return done(error);
     }
-    // Handle successful profile retrieval
-    return done(null, profile);
 }));
 
-// Serialize and deserialize user sessions
 passport.serializeUser(function(user, done) {
     done(null, user);
 });
@@ -49,27 +77,23 @@ passport.deserializeUser(function(obj, done) {
     done(null, obj);
 });
 
-// Middleware to initialize Passport
-app.use(passport.initialize());
-
-// Route to start the LinkedIn OAuth flow
 app.get('/auth/linkedin',
     passport.authenticate('linkedin', { state: 'random_state_string' }));
 
-// Callback route after LinkedIn has authenticated the user
+// Updated this route to send a JSON response
 app.get('/auth/linkedin/callback',
     passport.authenticate('linkedin', { failureRedirect: '/login' }),
     function(req, res) {
-        // Successful authentication, redirect home.
+        const userData = req.user;
         console.log("LinkedIn Authenticated User Data:");
-        console.log(req.user);
-        res.redirect('/');
+        console.log(userData);
+
+        // Send JSON response instead of redirecting
+        res.status(201).json({ message: "Login Success", user: userData.user, token: userData.token });
     });
 
-
-app.use((req, res, next)=>{
-    console.log("HTTP method:"+req.method+"URL:"+req.url);
-
+app.use((req, res, next) => {
+    console.log("HTTP method:" + req.method + "URL:" + req.url);
     next();
 })
 
@@ -77,28 +101,21 @@ app.use(fileUpload({
     useTempFiles: true
 }))
 
-
-
-
 app.use("/users", userRouter);
 app.use("/notes", noteRouter);
 
-
-app.get("/", (req,res)=>{
+app.get("/", (req, res) => {
     res.status(200).send("hello ravneet")
 })
 
-
-
 mongoose.connect("mongodb+srv://ravneetsingh:QKM3et7gJV7tHLyx@cluster0.71gvnk2.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
-.then(()=>{
-    console.log("connected to DB");
-})
-.catch((error)=>{
-    console.log(error)
-})
+    .then(() => {
+        console.log("connected to DB");
+    })
+    .catch((error) => {
+        console.log(error)
+    })
 
-//Socket Logic
 const socketio = require('socket.io')(http)
 
 socketio.on("connection", (userSocket) => {
@@ -107,8 +124,6 @@ socketio.on("connection", (userSocket) => {
     })
 })
 
-const server = app.listen(8000, ()=>{
+const server = app.listen(8000, () => {
     console.log("server started")
 })
-
-
