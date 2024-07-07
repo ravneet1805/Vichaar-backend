@@ -30,7 +30,7 @@ app.use(passport.session());
 passport.use(new LinkedInStrategy({
     clientID: '86zgpoa1vowd7t',
     clientSecret: 'HfYEIA93IIDFLpuh',
-    callbackURL: "http://localhost:8000/auth/linkedin/callback",
+    callbackURL: "https://vichaar.onrender.com/auth/linkedin/callback",
     scope: ['openid', 'profile', 'email'],
     profileFields: ['id', 'first-name', 'last-name', 'email-address', 'headline']
 }, async(accessToken, refreshToken, openid, profile, done) => {
