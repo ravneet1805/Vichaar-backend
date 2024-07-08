@@ -8,6 +8,16 @@ const NoteSchema = mongoose.Schema({
         required : true
     },
 
+    image : {
+        type: String,
+
+    },
+
+    requiredSkills : [{
+        type: String
+
+    }],
+
     userId :{
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
@@ -18,6 +28,14 @@ const NoteSchema = mongoose.Schema({
         {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User"
+        }
+    ],
+
+    interested : [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User"
+
         }
     ],
 
