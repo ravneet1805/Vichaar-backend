@@ -12,6 +12,10 @@ cloudinary.config({
 const createNote = async (req, res) => {
   const file = req.files.photo;
   cloudinary.uploader.upload(file.tempFilePath, async (err, photoData) => {
+    transformation: [
+      { width: 800, height: 600, crop: "limit" },
+      { quality: "auto" }
+    ]
     console.log(photoData);
     console.log(err);
     const { title, image, requiredSkills } = req.body;
