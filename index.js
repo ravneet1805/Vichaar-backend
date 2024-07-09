@@ -31,7 +31,7 @@ passport.use(new LinkedInStrategy({
     clientID: '86zgpoa1vowd7t',
     clientSecret: 'HfYEIA93IIDFLpuh',
     callbackURL: "https://vichaar.onrender.com/auth/linkedin/callback",
-    scope: ['profile', 'email'],
+    scope: ['openid','profile', 'email'],
     profileFields: ['id', 'first-name', 'last-name', 'email-address', 'headline']
 }, async(accessToken, refreshToken, openid, profile, done) => {
     try {
@@ -80,6 +80,8 @@ passport.deserializeUser(function(obj, done) {
 app.get('/auth/linkedin',
     passport.authenticate('linkedin', { state: 'random_state_string' }));
 
+    try{
+
 // Updated this route to send a JSON response
 app.get('/auth/linkedin/callback',
     passport.authenticate('linkedin', { failureRedirect: '/login' }),
@@ -91,6 +93,10 @@ app.get('/auth/linkedin/callback',
         // Send JSON response instead of redirecting
         res.status(201).json({ message: "Login Success", user: userData.user, token: userData.token });
     });
+
+} catch(error){
+    console.log(error)
+}
 
 app.use((req, res, next) => {
     console.log("HTTP method:" + req.method + "URL:" + req.url);
