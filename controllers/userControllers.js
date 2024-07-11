@@ -15,15 +15,31 @@ cloudinary.config({
 
 
 const signup = async (req, res) =>  {
+    
     const file = req.files.photo;
+
+    try{
     cloudinary.uploader.upload(file.tempFilePath, async (err,photoData) =>{
         console.log(photoData)
         console.log(err)
 
-        const { name, email, password } = req.body;
+        const { name,
+            email,
+            password,
+            userName,
+            githubLink,
+            linkedinLink,
+            bio,
+            skills,
+        } = req.body;
+
+        if (!password) {
+            return res.status(400).json({ message: "Password is required." });
+        }
+
 
         try {
-            const existingUser = await userModel.findOne({ email: email });
+            const existingUser = await userModel.findOne({ email: email});
     
             if (existingUser) {
                 return res.status(400).json({ message: "User Already Exists." });
@@ -33,8 +49,13 @@ const signup = async (req, res) =>  {
     
             const result = await userModel.create({
                 name: name,
+                userName: userName,
                 email: email,
                 password: hashedPassword,
+                bio: bio,
+                githubLink: githubLink,
+                linkedinLink: linkedinLink,
+                skills,
                 image: photoData.url
             });
     
@@ -46,9 +67,15 @@ const signup = async (req, res) =>  {
             });
         } catch (error) {
             console.log(error);
+            cloudinary.uploader.destroy(photoData.public_id);
             res.status(500).json("Something went wrong.");
         }
     })
+}catch(err){
+    console.log(err),
+    cloudinary.uploader.destroy(photoData.public_id);
+    res.status(500).json(err)
+}
 
 
 };

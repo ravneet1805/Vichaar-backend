@@ -7,6 +7,12 @@ const userSchema = mongoose.Schema({
         required : true
     },
 
+    userName: {
+        type: String,
+        required : true,
+        unique : true
+    },
+
     linkedinId : {
         type : String,
         //required : true

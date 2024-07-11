@@ -11,11 +11,14 @@ cloudinary.config({
 
 const createNote = async (req, res) => {
   const file = req.files.photo;
-  cloudinary.uploader.upload(file.tempFilePath, async (err, photoData) => {
-    transformation: [
-      { width: 800, height: 600, crop: "limit" },
-      { quality: "auto" }
-    ]
+  cloudinary.uploader.upload(file.tempFilePath,
+    {
+      transformation: [
+        { width: 800, height: 600, crop: "limit" },
+        { quality: "auto" }
+      ]
+    },
+    async (err, photoData) => {
     console.log(photoData);
     console.log(err);
     const { title, image, requiredSkills } = req.body;
@@ -131,8 +134,8 @@ const getspecificUserNote = async (req, res) => {
   try {
     const notes = await noteModel
       .find({ userId: id })
+      .sort({ createdAt: -1 })
       .populate("userId")
-      .sort({ createdAt: -1 });
     res.status(200).json(notes);
   } catch (error) {
     console.log(error);
