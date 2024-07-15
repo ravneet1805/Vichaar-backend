@@ -10,6 +10,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@faker-js/faker": "^8.4.1",
     "bcrypt": "^5.1.1",
     "cloudinary": "^1.41.2",
     "cors": "^2.8.5",
@@ -17,9 +18,13 @@
     "express": "^4.19.2",
     "express-fileupload": "^1.4.3",
     "express-session": "^1.18.0",
+    "faker": "^6.6.6",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.4.5",
+    "mailgen": "^2.0.28",
+    "mongoose": "^8.5.1",
+    "nodemailer": "^6.9.14",
     "nodemon": "^3.0.1",
+    "otp-generator": "^4.0.1",
     "passport": "^0.7.0",
     "passport-linkedin-oauth2": "github:auth0/passport-linkedin-oauth2",
     "socket.io": "^4.7.5"

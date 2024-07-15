@@ -1,10 +1,12 @@
 const express = require("express");
-const { signup, signin, searchUsers, getUser, followUser, unfollowUser, linkedinAuth,linkedinCallback,profile } = require("../controllers/userControllers");
+const { signup, signin, searchUsers, getUser, followUser, unfollowUser, updateUserInfo } = require("../controllers/userControllers");
 
 const auth = require('../middleware/auth')
 const userRouter = express.Router();
 
 userRouter.post("/signup", signup)
+
+userRouter.post("/updatesignup", auth, updateUserInfo )
 
 userRouter.post("/signin", signin)
 

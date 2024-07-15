@@ -10,12 +10,12 @@ cloudinary.config({
 });
 
 const createNote = async (req, res) => {
-  const file = req.files.photo;
+  const file = req.files ? req.files.photo : null;
   cloudinary.uploader.upload(file.tempFilePath,
     {
       transformation: [
         { width: 800, height: 600, crop: "limit" },
-        { quality: "auto" }
+        { quality: "80" }
       ]
     },
     async (err, photoData) => {

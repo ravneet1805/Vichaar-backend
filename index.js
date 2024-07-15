@@ -3,6 +3,7 @@ const socketIO = require("socket.io");
 const http = require("http");
 const userRouter = require("./routes/userRoutes");
 const noteRouter = require("./routes/noteRoutes");
+const otpRouter = require("./routes/otpRoutes");
 const passport = require('passport');
 const LinkedInStrategy = require('passport-linkedin-oauth2').Strategy;
 const session = require('express-session');
@@ -109,6 +110,8 @@ app.use(fileUpload({
 
 app.use("/users", userRouter);
 app.use("/notes", noteRouter);
+app.use("/auth", otpRouter);
+
 
 app.get("/", (req, res) => {
     res.status(200).send("hello ravneet")

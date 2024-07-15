@@ -4,6 +4,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const SECRET_KEY = "NOTEAPI";
 const cloudinary = require('cloudinary').v2
+const OTP = require('../models/otp');
 
 
 cloudinary.config({
@@ -14,71 +15,153 @@ cloudinary.config({
 
 
 
-const signup = async (req, res) =>  {
-    
-    const file = req.files.photo;
+const signup = async (req, res) => {
 
-    try{
-    cloudinary.uploader.upload(file.tempFilePath, async (err,photoData) =>{
-        console.log(photoData)
-        console.log(err)
+    //const file = req.files.photo;
 
-        const { name,
-            email,
-            password,
-            userName,
-            githubLink,
-            linkedinLink,
-            bio,
-            skills,
-        } = req.body;
+    //try {
+        // cloudinary.uploader.upload(file.tempFilePath, async (err, photoData) => {
+        //     console.log(photoData)
+        //     console.log(err)
 
-        if (!password) {
-            return res.status(400).json({ message: "Password is required." });
-        }
+            const { 
+                //name,
+                email,
+                password,
+                userName,
+                otp
+                // githubLink,
+                // linkedinLink,
+                // bio,
+                // skills,
+            } = req.body;
 
+            if (!userName || !email || !password || !otp) {
+                return res.status(403).json({
+                  success: false,
+                  message: 'All fields are required',
+                });
+              }
 
-        try {
-            const existingUser = await userModel.findOne({ email: email});
-    
-            if (existingUser) {
-                return res.status(400).json({ message: "User Already Exists." });
-            }
-    
-            const hashedPassword = await bcrypt.hash(password, 10);
-    
-            const result = await userModel.create({
-                name: name,
-                userName: userName,
-                email: email,
-                password: hashedPassword,
-                bio: bio,
-                githubLink: githubLink,
-                linkedinLink: linkedinLink,
-                skills,
-                image: photoData.url
-            });
-    
-            const token = jwt.sign({ email: result.email, id: result._id }, SECRET_KEY);
-            console.log(result)
-            res.status(201).json({
-                user: result,
-                token: token,
-            });
-        } catch (error) {
-            console.log(error);
-            cloudinary.uploader.destroy(photoData.public_id);
-            res.status(500).json("Something went wrong.");
-        }
-    })
-}catch(err){
-    console.log(err),
-    cloudinary.uploader.destroy(photoData.public_id);
-    res.status(500).json(err)
-}
+            
+
+            try {
+
+                const existingEmail = await userModel.findOne({ email: req.body.email });
+                const existingUserName = await userModel.findOne({ userName: req.body.userName });
+        
+                if (existingEmail && existingEmail._id.toString() !== userId) {
+                    return res.status(400).json({ message: "Email already in use." });
+                }
+        
+                if (existingUserName && existingUserName._id.toString() !== userId) {
+                    
+                    return res.status(400).json({ message: "Username already in use." });
+                }
+
+               
+
+                // Find the most recent OTP for the email
+                const response = await OTP.find({ email }).sort({ createdAt: -1 }).limit(1);
+                if (response.length === 0 || otp !== response[0].otp) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'The OTP is not valid',
+                    })
+                }
+
+                const hashedPassword = await bcrypt.hash(password, 10);
+
+                const result = await userModel.create({
+                    //name: name,
+                    userName: userName,
+                    email: email,
+                    password: hashedPassword,
+                    // bio: bio,
+                    // githubLink: githubLink,
+                    // linkedinLink: linkedinLink,
+                    // skills,
+                    // image: photoData.url
+                });
+
+                const token = jwt.sign({ email: result.email, id: result._id }, SECRET_KEY);
+                console.log(result)
+                res.status(201).json({
+                    message: "Account created succesfully",
+                    user: result,
+                    token: token,
+                });
+        //     } catch (error) {
+        //         console.log(error);
+        //         cloudinary.uploader.destroy(photoData.public_id);
+        //         res.status(500).json("Something went wrong.");
+        //     }
+        // })
+    } catch (err) {
+        console.log(err),
+            //cloudinary.uploader.destroy(photoData.public_id);
+        res.status(500).json(err)
+    }
 
 
 };
+
+const updateUserInfo = async (req, res) => {
+    const userId = req.userId;
+    const file = req.files ? req.files.photo : null;
+    
+    // if (file == null) {
+    //     return res.status(403).json({
+    //       success: false,
+    //       message: 'image required',
+    //     });
+    //   }
+
+
+    try {
+        cloudinary.uploader.upload(file.tempFilePath, async (err, photoData) => {
+            console.log(photoData)
+            console.log(err) 
+    const {
+        githubLink,
+        linkedinLink,
+        bio,
+        skills,
+        fullName
+    } = req.body;
+
+    try {
+
+        console.log(userId)
+        console.log(fullName)
+        console.log(bio)
+        console.log(linkedinLink)
+        console.log(githubLink)
+        console.log(skills)
+        // Update user information
+        const updatedUser = await userModel.findByIdAndUpdate(userId, {
+            image: photoData.url,
+            githubLink,
+            linkedinLink,
+            bio,
+            skills: JSON.parse(skills),
+            fullName
+        }, { new: true }); // `new: true` returns the updated document
+
+        res.status(200).json({ user: updatedUser, message: "Details added seccessfully " });
+            } catch (error) {
+                console.log(error);
+                cloudinary.uploader.destroy(photoData.public_id);
+                res.status(500).json("Something went wrong.");
+            }
+        })
+    } catch (error) {
+        console.error(error);
+        cloudinary.uploader.destroy(photoData.public_id);
+        res.status(500).json({ message: "Something went wrong." });
+    }
+};
+
 
 
 
@@ -101,17 +184,20 @@ const getUser = async (req, res) => {
 const searchUsers = async (req, res) => {
     console.log(req.params.key);
     let data = await userModel.find({
-        name: { $regex: new RegExp(req.params.key, "i") },
+        fullName: { $regex: new RegExp(req.params.key, "i") },
     });
 
     res.send(data);
 };
 
 const signin = async (req, res) => {
-    const { email, password } = req.body;
+    const { identifier, password } = req.body;
 
     try {
-        const existingUser = await userModel.findOne({ email: email });
+        const existingUser = await userModel.findOne({ $or: [
+            { email: identifier },
+            { userName: identifier }
+          ] });
 
         if (!existingUser) {
             return res.status(404).json({ message: "User Not Exist." });
@@ -201,4 +287,4 @@ module.exports = {
 };
 
 
-module.exports = { signin, signup, searchUsers, getUser, followUser, unfollowUser };
+module.exports = { signin, signup, searchUsers, getUser, followUser, unfollowUser, updateUserInfo };
