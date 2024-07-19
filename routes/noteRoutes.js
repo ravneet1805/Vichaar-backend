@@ -11,7 +11,10 @@ const { getNote,
     getComments,
     addComment,
     updateComment,
-    deleteComment
+    deleteComment,
+    getTrendingNotes,
+    getTrendingSkills,
+    getNotesForSpecificSkill
 } = require("../controllers/noteController");
 const auth = require('../middleware/auth')
 const noteRouter = express.Router();
@@ -40,6 +43,13 @@ noteRouter.post("/comment/:id", auth, addComment)
 noteRouter.put("/comment/:id", auth, updateComment)
 
 noteRouter.delete("/comment/:id", auth, deleteComment)
+
+noteRouter.get('/trending', getTrendingNotes);
+
+noteRouter.get('/skills/trending', getTrendingSkills);
+
+noteRouter.get('/skill/:skill', getNotesForSpecificSkill);
+
 
 
 

@@ -153,7 +153,7 @@ const likeNote = async (req, res) => {
       { $addToSet: { likes: req.userId } },
       { new: true }
     );
-
+    
     res.status(200).json(result);
   } catch (err) {
     res.status(500).json({ message: err.message || "Internal Server Error" });
@@ -254,6 +254,59 @@ const deleteComment = async (req, res) => {
   }
 };
 
+
+const getTrendingNotes = async (req, res) => {
+  try {
+    const trendingNotes = await noteModel
+      .find()
+      .sort({ likes: -1 }) // Sort by the number of likes in descending order
+      .limit(10) // Limit to the top 10 trending notes
+      .populate("userId")
+      .populate("comments.user");
+
+    res.status(200).json(trendingNotes);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
+
+const getTrendingSkills = async (req, res) => {
+  try {
+    const skills = await noteModel.aggregate([
+      { $unwind: "$requiredSkills" },
+      { $group: { _id: "$requiredSkills", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 10 },
+      { $project: { skill: "$_id", count: 1, _id: 0 } }
+    ]);
+
+    res.status(200).json(skills);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
+
+const getNotesForSpecificSkill = async (req, res) => {
+  const skill = req.params.skill;
+  try {
+    const notes = await noteModel
+      .find({ requiredSkills: skill })
+      .sort({ createdAt: -1 })
+      .populate("userId")
+      .populate("comments.user");
+
+    res.status(200).json(notes);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
+
 module.exports = {
   createNote,
   deleteNote,
@@ -268,4 +321,7 @@ module.exports = {
   addComment,
   updateComment,
   deleteComment,
+  getTrendingNotes,
+  getTrendingSkills,
+  getNotesForSpecificSkill
 };

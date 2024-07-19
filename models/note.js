@@ -55,7 +55,9 @@ const NoteSchema = mongoose.Schema({
                 default: Date.now
             }
         }
-    ], // Array for comments
+    ],
+    
+    // Array for comments
     
     
     
