@@ -1,5 +1,5 @@
 const express = require("express");
-const { signup, signin, searchUsers, getUser, followUser, unfollowUser, updateUserInfo, checkUsernameAvailability, upadteProfile } = require("../controllers/userControllers");
+const { signup, signin, searchUsers, getUser, followUser, unfollowUser, updateUserInfo, checkUsernameAvailability, updateProfile } = require("../controllers/userControllers");
 
 const auth = require('../middleware/auth')
 const userRouter = express.Router();
@@ -8,7 +8,7 @@ userRouter.post("/signup", signup)
 
 userRouter.post("/checkusername", checkUsernameAvailability)
 
-userRouter.put("/updateprofile", auth, upadteProfile)
+userRouter.put("/updateprofile", auth, updateProfile)
 
 userRouter.post("/updatesignup", auth, updateUserInfo )
 

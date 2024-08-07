@@ -14,12 +14,14 @@ const { getNote,
     deleteComment,
     getTrendingNotes,
     getTrendingSkills,
-    getNotesForSpecificSkill
+    getNotesForSpecificSkill,
+    getRecomendedNote
 } = require("../controllers/noteController");
 const auth = require('../middleware/auth')
 const noteRouter = express.Router();
 
 noteRouter.get("/", auth, getNote)
+noteRouter.get("/recomendedNotes", auth, getRecomendedNote)
 noteRouter.get("/followingnotes", auth, getFollowingUserNotes)
 
 noteRouter.get("/user", auth, getUserNote)

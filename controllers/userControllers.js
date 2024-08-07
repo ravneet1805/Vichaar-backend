@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 const SECRET_KEY = "NOTEAPI";
 const cloudinary = require("cloudinary").v2;
 const OTP = require("../models/otp");
+const admin = require('firebase-admin');
 
 cloudinary.config({
   cloud_name: "dekqiflmi",
@@ -13,7 +14,7 @@ cloudinary.config({
 });
 
 const checkUsernameAvailability = async (req, res) => {
-  console.log("enterebgdonfvcobuuodf");
+  
   const { username } = req.body;
   if (!username) {
     return res.status(400).json({ message: "Username is required" });
@@ -88,11 +89,7 @@ const signup = async (req, res) => {
       userName: userName,
       email: email,
       password: hashedPassword,
-      // bio: bio,
-      // githubLink: githubLink,
-      // linkedinLink: linkedinLink,
-      // skills,
-      // image: photoData.url
+      
     });
 
     const token = jwt.sign({ email: result.email, id: result._id }, SECRET_KEY);
@@ -119,18 +116,11 @@ const updateUserInfo = async (req, res) => {
   const userId = req.userId;
   const file = req.files ? req.files.photo : null;
 
-  // if (file == null) {
-  //     return res.status(403).json({
-  //       success: false,
-  //       message: 'image required',
-  //     });
-  //   }
-
   try {
     cloudinary.uploader.upload(file.tempFilePath, async (err, photoData) => {
       console.log(photoData);
       console.log(err);
-      const { githubLink, linkedinLink, bio, skills, fullName } = req.body;
+      const { githubLink, linkedinLink, bio, skills, fullName, deviceToken } = req.body;
 
       try {
         console.log(userId);
@@ -150,6 +140,7 @@ const updateUserInfo = async (req, res) => {
             skills: JSON.parse(skills),
             fullName,
           },
+          { $addToSet: { deviceToken: deviceToken } },
           { new: true }
         ); // `new: true` returns the updated document
 
@@ -194,7 +185,7 @@ const searchUsers = async (req, res) => {
 };
 
 const signin = async (req, res) => {
-  const { identifier, password } = req.body;
+  const { identifier, password, deviceToken } = req.body;
 
   if(!identifier){
     return res.status(404).json({message: "Email or Password is required"})
@@ -214,6 +205,17 @@ const signin = async (req, res) => {
     if (!matchPassword) {
       return res.status(400).json({ message: "Incorrect Password." });
     }
+
+    console.log("device Token: "+ deviceToken)
+
+    console.log("exist user: "+ existingUser._id)
+    console.log("exist user2: "+ existingUser.id)
+  
+
+    await userModel.findByIdAndUpdate(
+      existingUser._id,
+      { $addToSet: { deviceToken: deviceToken } }, // Add the token only if it doesn't already exist
+    );
 
     const token = jwt.sign(
       { email: existingUser.email, id: existingUser._id },
@@ -250,11 +252,51 @@ const followUser = async (req, res) => {
       follower.following.push(userId);
       await follower.save();
 
-      res.status(200).json({ message: "Followed successfully" });
-    } else {
-      res.status(400).json({ error: "Already following this user" });
-    }
-  } catch (error) {
+
+
+
+    // Get the FCM token of the user who created the note
+    const fcmToken = user.deviceToken
+    console.log("device Token: "+fcmToken)
+
+
+    // Construct the notification message for each token
+    const notificationPromises = fcmToken.map(token => {
+      const message = {
+        notification: {
+          title: "👀 New Follower!",
+            body: follower.fullName+" just followed you",
+        },
+        token: token,
+      };
+
+      // Send the notification
+      return admin.messaging().send(message)
+        .then((response) => {
+          console.log(`Successfully sent message to token ${token}:`, response);
+        })
+        .catch((error) => {
+          console.error(`Error sending message to token ${token}:`, error);
+        });
+    });
+
+    // Wait for all notifications to be sent
+    await Promise.all(notificationPromises);
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+  }} catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal server error" });
   }
@@ -293,60 +335,73 @@ const unfollowUser = async (req, res) => {
   }
 };
 
-const upadteProfile = async (req, res) => {
+const updateProfile = async (req, res) => {
     const userId = req.userId;
-    const image = req.files ? req.files.photo : null;
-
+    const file = req.files ? req.files.photo : null;
+  
     try {
-        
-     const  {
-            fullName,
-            userName,
-            bio,
-            githubLink,
-            linkedinLink,
-        } = req.body;
-
-        const updatedData = {
-            fullName,
-            userName,
-            bio,
-            githubLink,
-            linkedinLink,
-            image
-        }
-
-        if(userName == ""){
-           return res.status(404).json({message: "Username cannot be null"})
-        }
-
-        if (userName) {
-            const userNameExists = await userModel.findOne({ userName, _id: { $ne: userId } });
-            if (userNameExists) {
-                return res.status(400).json({ message: 'Username already in use' });
-            }
-        }
-
-        const updatedUser = await userModel.findByIdAndUpdate(userId, updatedData, { new: true });
-
-        if (!updatedUser) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-
-        res.status(200).json({
-            success: true,
-            message: 'Profile updated successfully',
-            user: updatedUser
+      let photoData = null;
+  
+      if (file) {
+        photoData = await cloudinary.uploader.upload(file.tempFilePath, {
+          transformation: [
+            { width: 800, height: 600, crop: "limit" },
+            { fetch_format: 'auto' }, // auto convert to WebP or other optimized format
+            { quality: 'auto:good' }
+          ]
         });
+      }
+  
+      const {
+        fullName,
+        userName,
+        bio,
+        githubLink,
+        linkedinLink,
+      } = req.body;
+  
+      const updatedData = {
+        fullName,
+        userName,
+        bio,
+        githubLink,
+        linkedinLink,
 
+        
+
+      };
+  
+      if (photoData) {
+        updatedData.image = photoData.url;
+      }
+  
+  
+      if (userName) {
+        const userNameExists = await userModel.findOne({ userName, _id: { $ne: userId } });
+        if (userNameExists) {
+          return res.status(400).json({ message: 'Username already in use' });
+        }
+      }
+  
+      const updatedUser = await userModel.findByIdAndUpdate(userId, updatedData, { new: true });
+  
+      if (!updatedUser) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+  
+      res.status(200).json({
+        success: true,
+        message: 'Profile updated successfully',
+        user: updatedUser
+      });
+    } catch (error) {
+      console.error(error.message);
+      res.status(500).json({ success: false, message: 'Server error' });
     }
+  };
+  
 
-        catch (error) {
-        console.error(error.message);
-        res.status(500).json({ success: false, message: 'Server error' });
-    }
 
-}
 
 
 
@@ -359,5 +414,5 @@ module.exports = {
     unfollowUser,
     updateUserInfo,
     checkUsernameAvailability,
-    upadteProfile
+    updateProfile
 };

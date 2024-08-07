@@ -65,7 +65,9 @@ const userSchema = mongoose.Schema({
             ref: "User"
         }
     ],
-    deviceToken: { type: String }
+    deviceToken:[
+        { type: String }
+    ]
 },{timestamps: true}
 )
 

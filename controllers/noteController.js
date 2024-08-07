@@ -1,5 +1,7 @@
 const noteModel = require("../models/note");
 const userModel = require("../models/user");
+const admin = require('firebase-admin');
+
 
 const cloudinary = require("cloudinary").v2;
 
@@ -10,36 +12,38 @@ cloudinary.config({
 });
 
 const createNote = async (req, res) => {
-  const file = req.files ? req.files.photo : null;
-  cloudinary.uploader.upload(file.tempFilePath,
-    {
-      transformation: [
-        { width: 800, height: 600, crop: "limit" },
-        { quality: "80" }
-      ]
-    },
-    async (err, photoData) => {
-    console.log(photoData);
-    console.log(err);
-    const { title, image, requiredSkills } = req.body;
+  try {
+    let imageUrl = null;
 
-    try{
+    if (req.files && req.files.photo) {
+      const file = req.files.photo;
+      const photoData = await cloudinary.uploader.upload(file.tempFilePath, {
+        transformation: [
+          { width: 800, height: 600, crop: "limit" },
+          { quality: "80" }
+        ]
+      });
+      imageUrl = photoData.url;
+    }
+
+    const { title, requiredSkills } = req.body;
+
     const newNote = new noteModel({
       title: title,
-      image: photoData.url,
+      image: imageUrl, // This will be null if no image is uploaded
       requiredSkills: requiredSkills,
       userId: req.userId,
     });
-  
-      await newNote.save();
-      res.status(201).json(newNote);
-    } catch (error) {
-      console.log(error);
 
-      res.status(500).json({ message: "something went wrong" });
-    }
-  });
+    await newNote.save();
+    res.status(201).json(newNote);
+
+  } catch (error) {
+    console.error("Error creating note:", error);
+    res.status(500).json({ message: "Something went wrong", error: error.message });
+  }
 };
+
 
 const updateNote = async (req, res) => {
   const id = req.params.id;
@@ -90,6 +94,44 @@ const getNote = async (req, res) => {
     res.status(500).json({ message: "something went wrong" });
   }
 };
+
+const getRecomendedNote = async (req, res) => {
+  const id = req.userId;
+  try {
+    // Fetch user skills
+    const user = await userModel.findById('6693a97e1836d4227689734b').select('skills');
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const userSkills = user.skills;
+
+    // Find notes that match the user's skills
+    let notes = await noteModel.find({
+      requiredSkills: { $in: userSkills }
+    })
+    .sort({ createdAt: -1 })
+    .populate("userId");
+
+     // If not enough matching notes, fetch additional notes to maintain engagement
+
+      const additionalNotes = await noteModel.find({
+        _id: { $nin: notes.map(note => note._id) }
+      })
+      .sort({ createdAt: -1 })
+      .populate("userId")
+
+      notes = notes.concat(additionalNotes);
+    
+
+    res.status(200).json(notes);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "something went wrong" });
+  }
+};
+
+
 const getFollowingUserNotes = async (req, res) => {
   try {
     // Get the list of users that the current user is following
@@ -147,13 +189,45 @@ const getspecificUserNote = async (req, res) => {
 const likeNote = async (req, res) => {
   try {
     const id = req.params.id;
+    const receiverNote = await noteModel.findById(id)
+    const receiver = await userModel.findById(receiverNote.userId)
 
     const result = await noteModel.findByIdAndUpdate(
       id,
       { $addToSet: { likes: req.userId } },
       { new: true }
     );
-    
+
+
+    // Get the FCM token of the user who created the note
+    const fcmToken = receiver.deviceToken
+    console.log("device Token: "+fcmToken)
+
+    const sender = await userModel.findById(req.userId)
+
+
+    // Construct the notification message for each token
+    const notificationPromises = fcmToken.map(token => {
+      const message = {
+        notification: {
+          title: "You've Got a Like!",
+          body: `${sender.fullName} liked your Vichaar`,
+        },
+        token: token,
+      };
+
+      // Send the notification
+      return admin.messaging().send(message)
+        .then((response) => {
+          console.log(`Successfully sent message to token ${token}:`, response);
+        })
+        .catch((error) => {
+          console.error(`Error sending message to token ${token}:`, error);
+        });
+    });
+
+    // Wait for all notifications to be sent
+    await Promise.all(notificationPromises);
     res.status(200).json(result);
   } catch (err) {
     res.status(500).json({ message: err.message || "Internal Server Error" });
@@ -213,6 +287,43 @@ const addComment = async (req, res) => {
         { new: true }
       )
       .populate("comments.user"); // Populate user information for the new comment
+
+
+      const receiverNote = await noteModel.findById(noteId)
+      const receiver = await userModel.findById(receiverNote.userId)
+      
+
+
+      // Get the FCM token of the user who created the note
+    const fcmToken = receiver.deviceToken
+    console.log("device Token: "+fcmToken)
+
+    const sender = await userModel.findById(req.userId)
+
+
+    // Construct the notification message for each token
+    const notificationPromises = fcmToken.map(token => {
+      const message = {
+        notification: {
+          title: sender.fullName+" has something to say!",
+            body: text,
+        },
+        token: token,
+      };
+
+      // Send the notification
+      return admin.messaging().send(message)
+        .then((response) => {
+          console.log(`Successfully sent message to token ${token}:`, response);
+        })
+        .catch((error) => {
+          console.error(`Error sending message to token ${token}:`, error);
+        });
+    });
+
+    // Wait for all notifications to be sent
+    await Promise.all(notificationPromises);
+
     res.status(200).json(result);
   } catch (err) {
     res.status(500).json({ message: err.message || "Internal Server Error" });
@@ -315,6 +426,7 @@ module.exports = {
   likeNote,
   unlikeNote,
   getNote,
+  getRecomendedNote,
   getFollowingUserNotes,
   getspecificUserNote,
   getComments,

@@ -13,11 +13,21 @@ const mongoose = require("mongoose");
 const fileUpload = require('express-fileupload')
 const userModel = require("./models/user");
 const jwt = require("jsonwebtoken");
+const firebase = require("firebase-admin/messaging")
 
 app.use(express.json())
 
 // Add CORS middleware
 app.use(cors());
+
+var admin = require("firebase-admin");
+
+var serviceAccount = require("/Users/ravneetsingh/Desktop/Vichaar-backend/vichaar-31878-firebase-adminsdk-76swt-790b280f53.json");
+
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+
 
 app.use(session({
     secret: 'sessionvichaar061', // Change this to a secure random string
@@ -69,6 +79,8 @@ passport.use(new LinkedInStrategy({
         return done(error);
     }
 }));
+
+
 
 passport.serializeUser(function(user, done) {
     done(null, user);
