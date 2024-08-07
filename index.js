@@ -22,7 +22,7 @@ app.use(cors());
 
 var admin = require("firebase-admin");
 
-var serviceAccount = require("/Users/ravneetsingh/Desktop/Vichaar-backend/vichaar-31878-firebase-adminsdk-76swt-790b280f53.json");
+var serviceAccount = require("../Vichaar-backend/vichaar-31878-firebase-adminsdk-76swt-790b280f53.json");
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
