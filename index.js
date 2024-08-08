@@ -125,6 +125,35 @@ app.use("/users", userRouter);
 app.use("/notes", noteRouter);
 app.use("/auth", otpRouter);
 
+app.get("/dummy", (req,res) =>{
+    res.send("Dummy");
+    console.log("calling Dummy api");
+})
+function pingServer() {
+    const options = {
+      hostname: 'localhost',
+      port:  8000,
+      path: '/dummy',
+      method: 'GET'
+    };
+  
+    const req = http.request(options, (res) => {
+      res.on('data', (chunk) => {
+        // console.log(`Ping response: ${chunk}`);
+        console.log("Calling dummy api")
+      });
+    });
+  
+    req.on('error', (e) => {
+      console.error(`Problem with ping request: ${e}`);
+    });
+  
+    req.end();
+  }
+  
+  // Ping the server every 5 minutes
+  setInterval(pingServer, 8 * 60 * 1000); // 5 minutes in milliseconds
+
 
 app.get("/", (req, res) => {
     res.status(200).send("hello ravneet")

@@ -99,7 +99,7 @@ const getRecomendedNote = async (req, res) => {
   const id = req.userId;
   try {
     // Fetch user skills
-    const user = await userModel.findById('6693a97e1836d4227689734b').select('skills');
+    const user = await userModel.findById(id).select('skills');
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -247,6 +247,92 @@ const unlikeNote = async (req, res) => {
     res.status(200).json(result);
   } catch (err) {
     res.status(500).json({ message: err.message || "Internal Server Error" });
+  }
+};
+
+const markInterested = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const receiverNote = await noteModel.findById(id)
+    const receiver = await userModel.findById(receiverNote.userId)
+    const result = await noteModel.findByIdAndUpdate(
+      id,
+      { $addToSet: { interested: req.userId } },
+      { new: true }
+    );
+
+    // Get the FCM token of the user who created the note
+    const fcmToken = receiver.deviceToken
+    console.log("device Token: "+fcmToken)
+
+    const sender = await userModel.findById(req.userId)
+
+
+    // Construct the notification message for each token
+    const notificationPromises = fcmToken.map(token => {
+      const message = {
+        notification: {
+          title: "Someone's Interested",
+          body: `${sender.fullName} is interested your Vichaar`,
+        },
+        token: token,
+      };
+
+      // Send the notification
+      return admin.messaging().send(message)
+        .then((response) => {
+          console.log(`Successfully sent message to token ${token}:`, response);
+        })
+        .catch((error) => {
+          console.error(`Error sending message to token ${token}:`, error);
+        });
+    });
+
+    // Wait for all notifications to be sent
+    await Promise.all(notificationPromises);
+    res.status(200).json(result);
+
+
+  } catch (err) {
+    res.status(500).json({ message: err.message || "Internal Server Error" });
+  }
+}
+
+const notInterested = async (req, res) => {
+  const id = req.params.id;
+
+  try {
+    const result = await noteModel.findByIdAndUpdate(
+      id,
+      { $pull: { interested: req.userId } },
+      { new: true }
+    );
+
+    res.status(200).json(result);
+  } catch (err) {
+    res.status(500).json({ message: err.message || "Internal Server Error" });
+  }
+};
+
+const getInterestedUsers = async (req, res) => {
+  const noteId = req.params.id;
+
+  try {
+    const note = await noteModel
+      .findById(noteId)
+      .populate("interested");
+    if (!note) {
+      return res.status(404).json({ error: "Note not found" });
+    }
+
+    const sortedUsers = note.interested.sort(
+      (a, b) => b.createdAt - a.createdAt
+    );
+
+    res.json(sortedUsers);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 
@@ -425,6 +511,9 @@ module.exports = {
   getUserNote,
   likeNote,
   unlikeNote,
+  markInterested,
+  notInterested,
+  getInterestedUsers,
   getNote,
   getRecomendedNote,
   getFollowingUserNotes,

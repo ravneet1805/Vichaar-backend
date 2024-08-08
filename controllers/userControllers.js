@@ -178,7 +178,12 @@ const getUser = async (req, res) => {
 const searchUsers = async (req, res) => {
   console.log(req.params.key);
   let data = await userModel.find({
-    fullName: { $regex: new RegExp(req.params.key, "i") },
+
+    $or: [
+      { fullName: { $regex: new RegExp(req.params.key, "i") } },
+      { userName: { $regex: new RegExp(req.params.key, "i") } }
+    ]
+
   });
 
   res.send(data);
@@ -200,7 +205,7 @@ const signin = async (req, res) => {
       return res.status(404).json({ message: "User Not Exist." });
     }
 
-   const matchPassword = await bcrypt.compare(password, existingUser.password);
+  const matchPassword = await bcrypt.compare(password, existingUser.password);
 
     if (!matchPassword) {
       return res.status(400).json({ message: "Incorrect Password." });

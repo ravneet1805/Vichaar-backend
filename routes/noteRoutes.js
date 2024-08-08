@@ -6,6 +6,8 @@ const { getNote,
     updateNote,
     likeNote,
     unlikeNote,
+    markInterested,
+    notInterested,
     getspecificUserNote,
     getFollowingUserNotes,
     getComments,
@@ -15,13 +17,16 @@ const { getNote,
     getTrendingNotes,
     getTrendingSkills,
     getNotesForSpecificSkill,
-    getRecomendedNote
+    getRecomendedNote,
+    getInterestedUsers
 } = require("../controllers/noteController");
 const auth = require('../middleware/auth')
 const noteRouter = express.Router();
 
 noteRouter.get("/", auth, getNote)
+
 noteRouter.get("/recomendedNotes", auth, getRecomendedNote)
+
 noteRouter.get("/followingnotes", auth, getFollowingUserNotes)
 
 noteRouter.get("/user", auth, getUserNote)
@@ -37,6 +42,12 @@ noteRouter.put("/:id", auth, updateNote)
 noteRouter.put("/like/:id", auth, likeNote)
 
 noteRouter.put("/unlike/:id", auth, unlikeNote)
+
+noteRouter.put("/interested/:id", auth, markInterested)
+
+noteRouter.put("/notInterested/:id", auth, notInterested)
+
+noteRouter.get("/getInterestedUsers/:id", auth, getInterestedUsers)
 
 noteRouter.get("/comment/:id", auth, getComments)
 
