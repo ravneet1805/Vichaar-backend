@@ -14,6 +14,7 @@ const fileUpload = require('express-fileupload')
 const userModel = require("./models/user");
 const jwt = require("jsonwebtoken");
 const firebase = require("firebase-admin/messaging")
+const serviceAccountLocation = require("./vichaar-31878-firebase-adminsdk-76swt-790b280f53.json")
 
 app.use(express.json())
 
@@ -22,7 +23,7 @@ app.use(cors());
 
 var admin = require("firebase-admin");
 
-var serviceAccount = require("../Vichaar-backend/vichaar-31878-firebase-adminsdk-76swt-790b280f53.json");
+var serviceAccount = serviceAccountLocation;
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
