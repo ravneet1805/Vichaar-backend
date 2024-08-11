@@ -258,6 +258,26 @@ const followUser = async (req, res) => {
       await follower.save();
 
 
+       // Create a new notification
+    if(user != follower){
+      const newNotification = {
+        senderId: followerId,
+        uniqueId: '',
+        title: "Follow",
+        message: `${follower.fullName} started following you`,
+      };
+  
+      await userModel.findByIdAndUpdate(
+        receiverNote.userId,
+        {$push: {
+          notifications: newNotification
+        }}
+  
+      )
+  
+    }
+
+
 
 
     // Get the FCM token of the user who created the note
@@ -289,17 +309,6 @@ const followUser = async (req, res) => {
     await Promise.all(notificationPromises);
 
 
-    
-
-
-
-
-
-
-
-
-
-
 
   }} catch (error) {
     console.error(error);
@@ -329,6 +338,21 @@ const unfollowUser = async (req, res) => {
         (id) => id.toString() !== userId.toString()
       );
       await follower.save();
+
+
+      // Remove the corresponding notification
+     await userModel.findByIdAndUpdate(
+      receiverId,
+      {
+        $pull: {
+          notifications: {
+            senderId: followerId,
+            uniqueId: '',
+            message:  {$regex:' started following you'}
+          }
+        }
+      }
+    );
 
       res.status(200).json({ message: "Unfollowed successfully" });
     } else {
@@ -363,6 +387,7 @@ const updateProfile = async (req, res) => {
         bio,
         githubLink,
         linkedinLink,
+        skills
       } = req.body;
   
       const updatedData = {
@@ -371,8 +396,7 @@ const updateProfile = async (req, res) => {
         bio,
         githubLink,
         linkedinLink,
-
-        
+        skills: JSON.parse(skills)
 
       };
   

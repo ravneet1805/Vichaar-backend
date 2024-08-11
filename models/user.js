@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const notification = require("./notification").schema;
 
 const userSchema = mongoose.Schema({
 
@@ -65,9 +66,17 @@ const userSchema = mongoose.Schema({
             ref: "User"
         }
     ],
+
+    notifications: [notification
+        // {
+        //     type: mongoose.Schema.Types.ObjectId,
+        //     ref: "Notification"
+        // }
+    ],
     deviceToken:[
         { type: String }
     ]
+
 },{timestamps: true}
 )
 

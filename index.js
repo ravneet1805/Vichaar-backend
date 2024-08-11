@@ -14,7 +14,7 @@ const fileUpload = require('express-fileupload')
 const userModel = require("./models/user");
 const jwt = require("jsonwebtoken");
 const firebase = require("firebase-admin/messaging")
-const serviceAccountLocation = require("./vichaar-31878-firebase-adminsdk-76swt-790b280f53.json")
+require('dotenv').config();
 
 app.use(express.json())
 
@@ -22,8 +22,21 @@ app.use(express.json())
 app.use(cors());
 
 var admin = require("firebase-admin");
+const notificationRouter = require("./routes/notificationRoutes");
 
-var serviceAccount = serviceAccountLocation;
+const serviceAccount = {
+    type: process.env.GCLOUD_TYPE,
+    project_id: process.env.GCLOUD_PROJECT_ID,
+    private_key_id: process.env.GCLOUD_PRIVATE_KEY_ID,
+    private_key: process.env.GCLOUD_PRIVATE_KEY.replace(/\\n/g, '\n'),
+    client_email: process.env.GCLOUD_CLIENT_EMAIL,
+    client_id: process.env.GCLOUD_CLIENT_ID,
+    auth_uri: process.env.GCLOUD_AUTH_URI,
+    token_uri: process.env.GCLOUD_TOKEN_URI,
+    auth_provider_x509_cert_url: process.env.GCLOUD_AUTH_PROVIDER_CERT_URL,
+    client_x509_cert_url: process.env.GCLOUD_CLIENT_CERT_URL,
+  };
+  
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
@@ -124,6 +137,7 @@ app.use(fileUpload({
 app.use("/users", userRouter);
 app.use("/notes", noteRouter);
 app.use("/auth", otpRouter);
+app.use("/notifications", notificationRouter)
 
 app.get("/dummy", (req,res) =>{
     res.send("Dummy");

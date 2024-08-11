@@ -1,6 +1,8 @@
 const noteModel = require("../models/note");
+const notification = require("../models/notification");
 const userModel = require("../models/user");
 const admin = require('firebase-admin');
+const {broadcastNotification } = require('../webSocket/webSocket');
 
 
 const cloudinary = require("cloudinary").v2;
@@ -31,7 +33,7 @@ const createNote = async (req, res) => {
     const newNote = new noteModel({
       title: title,
       image: imageUrl, // This will be null if no image is uploaded
-      requiredSkills: requiredSkills,
+      requiredSkills: JSON.parse(requiredSkills),
       userId: req.userId,
     });
 
@@ -110,19 +112,19 @@ const getRecomendedNote = async (req, res) => {
     let notes = await noteModel.find({
       requiredSkills: { $in: userSkills }
     })
-    .sort({ createdAt: -1 })
-    .populate("userId");
+      .sort({ createdAt: -1 })
+      .populate("userId");
 
-     // If not enough matching notes, fetch additional notes to maintain engagement
+    // If not enough matching notes, fetch additional notes to maintain engagement
 
-      const additionalNotes = await noteModel.find({
-        _id: { $nin: notes.map(note => note._id) }
-      })
+    const additionalNotes = await noteModel.find({
+      _id: { $nin: notes.map(note => note._id) }
+    })
       .sort({ createdAt: -1 })
       .populate("userId")
 
-      notes = notes.concat(additionalNotes);
-    
+    notes = notes.concat(additionalNotes);
+
 
     res.status(200).json(notes);
   } catch (error) {
@@ -135,6 +137,8 @@ const getRecomendedNote = async (req, res) => {
 const getFollowingUserNotes = async (req, res) => {
   try {
     // Get the list of users that the current user is following
+    console.log("entered follow ig vsonvsdign")
+    console.log(req.userId)
     const user = await userModel
       .findById(req.userId)
       .populate("following", "_id");
@@ -147,11 +151,17 @@ const getFollowingUserNotes = async (req, res) => {
       (followingUser) => followingUser._id
     );
 
+    console.log(followingUserIds)
+
     // Retrieve the notes from the users that the current user is following
     const notes = await noteModel
       .find({ userId: { $in: followingUserIds } })
       .sort({ createdAt: -1 })
       .populate("userId");
+
+
+    console.log(notes)
+
 
     res.status(200).json(notes);
   } catch (error) {
@@ -191,6 +201,7 @@ const likeNote = async (req, res) => {
     const id = req.params.id;
     const receiverNote = await noteModel.findById(id)
     const receiver = await userModel.findById(receiverNote.userId)
+    const sender = await userModel.findById(req.userId)
 
     const result = await noteModel.findByIdAndUpdate(
       id,
@@ -198,12 +209,35 @@ const likeNote = async (req, res) => {
       { new: true }
     );
 
+    // Create a new notification
+    if (receiver != sender) {
+      const newNotification = {
+        senderId: sender._id,
+        uniqueId: id,
+        title: "Like",
+        message: `${sender.fullName} liked your Vichaar`,
+      };
+    
+
+    await userModel.findByIdAndUpdate(
+      receiverNote.userId,
+      {
+        $push: {
+          notifications: newNotification
+        }
+      }
+    )
+    console.log("reacheed broadcastnotification")
+    broadcastNotification(receiverNote.userId,newNotification);
+    console.log("crossed broadcastnotification")
+
+  }
+
 
     // Get the FCM token of the user who created the note
     const fcmToken = receiver.deviceToken
-    console.log("device Token: "+fcmToken)
+    console.log("device Token: " + fcmToken)
 
-    const sender = await userModel.findById(req.userId)
 
 
     // Construct the notification message for each token
@@ -235,13 +269,34 @@ const likeNote = async (req, res) => {
 };
 
 const unlikeNote = async (req, res) => {
-  const id = req.params.id;
-
   try {
+    const id = req.params.id;
+
+    const note = await noteModel.findById(id);
+    const receiverId = note.userId;
+    const sender = await userModel.findById(req.userId)
+    const senderId = req.userId;
+
+
     const result = await noteModel.findByIdAndUpdate(
       id,
       { $pull: { likes: req.userId } },
       { new: true }
+    );
+
+
+    // Remove the corresponding notification
+    await userModel.findByIdAndUpdate(
+      receiverId,
+      {
+        $pull: {
+          notifications: {
+            senderId: senderId,
+            uniqueId: id,
+            message: { $regex: ' liked your Vichaar' }
+          }
+        }
+      }
     );
 
     res.status(200).json(result);
@@ -255,17 +310,38 @@ const markInterested = async (req, res) => {
     const id = req.params.id;
     const receiverNote = await noteModel.findById(id)
     const receiver = await userModel.findById(receiverNote.userId)
+    const sender = await userModel.findById(req.userId)
+
     const result = await noteModel.findByIdAndUpdate(
       id,
       { $addToSet: { interested: req.userId } },
       { new: true }
     );
 
+
+    // Create a new notification
+    const newNotification = {
+      senderId: sender._id,
+      uniqueId: id,
+      title: "Interested",
+      message: `${sender.fullName} is interested in your Vichaar`,
+    };
+
+    await userModel.findByIdAndUpdate(
+      receiverNote.userId,
+      {
+        $push: {
+          notifications: newNotification
+        }
+      }
+
+    )
+
     // Get the FCM token of the user who created the note
     const fcmToken = receiver.deviceToken
-    console.log("device Token: "+fcmToken)
+    console.log("device Token: " + fcmToken)
 
-    const sender = await userModel.findById(req.userId)
+
 
 
     // Construct the notification message for each token
@@ -273,7 +349,7 @@ const markInterested = async (req, res) => {
       const message = {
         notification: {
           title: "Someone's Interested",
-          body: `${sender.fullName} is interested your Vichaar`,
+          body: `${sender.fullName} is interested in your Vichaar`,
         },
         token: token,
       };
@@ -299,13 +375,30 @@ const markInterested = async (req, res) => {
 }
 
 const notInterested = async (req, res) => {
-  const id = req.params.id;
 
   try {
+    const id = req.params.id;
+    const note = await noteModel.findById(id);
+    const receiverId = note.userId;
+    const senderId = req.userId;
     const result = await noteModel.findByIdAndUpdate(
       id,
       { $pull: { interested: req.userId } },
       { new: true }
+    );
+
+    // Remove the corresponding notification
+    await userModel.findByIdAndUpdate(
+      receiverId,
+      {
+        $pull: {
+          notifications: {
+            senderId: senderId,
+            uniqueId: id,
+            message: { $regex: ' is interested' }
+          }
+        }
+      }
     );
 
     res.status(200).json(result);
@@ -359,13 +452,14 @@ const getComments = async (req, res) => {
 };
 
 const addComment = async (req, res) => {
-  const noteId = req.params.id;
-  const { text } = req.body;
-  const newComment = {
-    user: req.userId,
-    text: text,
-  };
   try {
+    const noteId = req.params.id;
+    const { text } = req.body;
+    const newComment = {
+      user: req.userId,
+      text: text,
+    };
+
     const result = await noteModel
       .findByIdAndUpdate(
         noteId,
@@ -375,24 +469,41 @@ const addComment = async (req, res) => {
       .populate("comments.user"); // Populate user information for the new comment
 
 
-      const receiverNote = await noteModel.findById(noteId)
-      const receiver = await userModel.findById(receiverNote.userId)
-      
-
-
-      // Get the FCM token of the user who created the note
-    const fcmToken = receiver.deviceToken
-    console.log("device Token: "+fcmToken)
-
+    const receiverNote = await noteModel.findById(noteId)
+    const receiver = await userModel.findById(receiverNote.userId)
     const sender = await userModel.findById(req.userId)
+    const commentsLength = result.comments.length
+    const commentId = result.comments[commentsLength - 1]._id
 
+    // Create a new notification
+    const newNotification = {
+      senderId: sender._id,
+      uniqueId: commentId,
+      title: "Comment",
+      message: `${sender.fullName} commented: ${text}`,
+    };
+
+    await userModel.findByIdAndUpdate(
+      receiverNote.userId,
+      {
+        $push: {
+          notifications: newNotification
+        }
+      }
+
+    )
+
+
+    // Get the FCM token of the user who created the note
+    const fcmToken = receiver.deviceToken
+    console.log("device Token: " + fcmToken)
 
     // Construct the notification message for each token
     const notificationPromises = fcmToken.map(token => {
       const message = {
         notification: {
-          title: sender.fullName+" has something to say!",
-            body: text,
+          title: sender.fullName + " has something to say!",
+          body: text,
         },
         token: token,
       };
@@ -435,16 +546,36 @@ const updateComment = async (req, res) => {
 };
 
 const deleteComment = async (req, res) => {
-  const noteId = req.params.noteId;
-  const commentId = req.params.commentId;
   try {
+    const { noteId, commentId } = req.params;
+
+    const note = await noteModel.findById(noteId);
+    const receiverId = note.userId;
+    const senderId = req.userId;
+
     const result = await noteModel
       .findByIdAndUpdate(
         noteId,
         { $pull: { comments: { _id: commentId } } },
         { new: true }
       )
-      .populate("comments.user"); // Populate user information for the remaining comments
+      .populate("comments.user");
+
+
+    // Remove the corresponding notification
+    await userModel.findByIdAndUpdate(
+      receiverId,
+      {
+        $pull: {
+          notifications: {
+            senderId: senderId,
+            uniqueId: commentId,
+            message: { $regex: ` commented:` }
+          }
+        }
+      }
+    );
+
     res.status(200).json(result);
   } catch (err) {
     res.status(500).json({ message: err.message || "Internal Server Error" });

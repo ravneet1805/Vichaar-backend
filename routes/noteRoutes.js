@@ -55,7 +55,7 @@ noteRouter.post("/comment/:id", auth, addComment)
 
 noteRouter.put("/comment/:id", auth, updateComment)
 
-noteRouter.delete("/comment/:id", auth, deleteComment)
+noteRouter.delete("/comment/:noteId/:commentId", auth, deleteComment)
 
 noteRouter.get('/trending', getTrendingNotes);
 
