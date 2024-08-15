@@ -2,7 +2,6 @@ const noteModel = require("../models/note");
 const notification = require("../models/notification");
 const userModel = require("../models/user");
 const admin = require('firebase-admin');
-const {broadcastNotification } = require('../webSocket/webSocket');
 
 
 const cloudinary = require("cloudinary").v2;
@@ -227,9 +226,6 @@ const likeNote = async (req, res) => {
         }
       }
     )
-    console.log("reacheed broadcastnotification")
-    broadcastNotification(receiverNote.userId,newNotification);
-    console.log("crossed broadcastnotification")
 
   }
 
@@ -244,7 +240,7 @@ const likeNote = async (req, res) => {
     const notificationPromises = fcmToken.map(token => {
       const message = {
         notification: {
-          title: "You've Got a Like!",
+          title: "Like",
           body: `${sender.fullName} liked your Vichaar`,
         },
         token: token,
@@ -337,6 +333,8 @@ const markInterested = async (req, res) => {
 
     )
 
+  
+
     // Get the FCM token of the user who created the note
     const fcmToken = receiver.deviceToken
     console.log("device Token: " + fcmToken)
@@ -348,7 +346,7 @@ const markInterested = async (req, res) => {
     const notificationPromises = fcmToken.map(token => {
       const message = {
         notification: {
-          title: "Someone's Interested",
+          title: "Interested",
           body: `${sender.fullName} is interested in your Vichaar`,
         },
         token: token,
@@ -502,8 +500,8 @@ const addComment = async (req, res) => {
     const notificationPromises = fcmToken.map(token => {
       const message = {
         notification: {
-          title: sender.fullName + " has something to say!",
-          body: text,
+          title: "Comment",
+          body: sender.fullName+" commented: "+text,
         },
         token: token,
       };

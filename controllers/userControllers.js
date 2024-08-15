@@ -115,50 +115,59 @@ const signup = async (req, res) => {
 const updateUserInfo = async (req, res) => {
   const userId = req.userId;
   const file = req.files ? req.files.photo : null;
+  let photoData = null; // Initialize photoData here to avoid reference errors later
 
   try {
-    cloudinary.uploader.upload(file.tempFilePath, async (err, photoData) => {
-      console.log(photoData);
-      console.log(err);
-      const { githubLink, linkedinLink, bio, skills, fullName, deviceToken } = req.body;
+    // If there is a file, upload it to Cloudinary
+    if (file) {
+      photoData = await cloudinary.uploader.upload(file.tempFilePath, {
+        transformation: [
+          { width: 800, height: 600, crop: "limit" },
+          { fetch_format: 'auto' }, // Auto convert to WebP or other optimized format
+          { quality: 'auto:good' }
+        ]
+      });
+    }
 
-      try {
-        console.log(userId);
-        console.log(fullName);
-        console.log(bio);
-        console.log(linkedinLink);
-        console.log(githubLink);
-        console.log(skills);
-        // Update user information
-        const updatedUser = await userModel.findByIdAndUpdate(
-          userId,
-          {
-            image: photoData.url,
-            githubLink,
-            linkedinLink,
-            bio,
-            skills: JSON.parse(skills),
-            fullName,
-          },
-          { $addToSet: { deviceToken: deviceToken } },
-          { new: true }
-        ); // `new: true` returns the updated document
+    const { githubLink, linkedinLink, bio, skills, fullName, deviceToken } = req.body;
 
-        res
-          .status(200)
-          .json({ user: updatedUser, message: "Details added seccessfully " });
-      } catch (error) {
-        console.log(error);
-        cloudinary.uploader.destroy(photoData.public_id);
-        res.status(500).json("Something went wrong.");
-      }
-    });
+    // Build the update object
+    const updateData = {
+      githubLink,
+      linkedinLink,
+      bio,
+      skills: JSON.parse(skills),
+      fullName,
+      ...(photoData && { image: photoData.url }) // Conditionally add the image field
+    };
+
+    // Update user information
+    const updatedUser = await userModel.findByIdAndUpdate(
+      userId,
+      {
+        $set: updateData, // Set the fields to update
+        $addToSet: { deviceToken: deviceToken } // Add deviceToken if it's not already in the array
+      },
+      { new: true } // Return the updated document
+    );
+
+    res.status(200).json({ user: updatedUser, message: "Details added successfully" });
+
   } catch (error) {
     console.error(error);
-    cloudinary.uploader.destroy(photoData.public_id);
-    res.status(500).json({ message: "Something went wrong." });
+
+    // If there's an error, and photoData was created, delete it from Cloudinary
+    if (photoData) {
+      await cloudinary.uploader.destroy(photoData.public_id);
+    }
+
+    if (!res.headersSent) { // Ensure response is not sent after headers are already sent
+      res.status(500).json({ message: "Something went wrong." });
+    }
   }
 };
+
+
 
 const getUser = async (req, res) => {
   const userId = req.params.id;
